@@ -61,18 +61,17 @@ class Temp():
 
         data = get_data("data/UnicomBJ_flows.h5")
         cur_flow = [data[:, 0, :, :].reshape((len(data), -1)), data[:, 1, :, :].reshape((len(data), -1))]
-        self.flows = np.concatenate(cur_flow, axis=1) / 1000
-
+        self.flows = np.concatenate(cur_flow, axis=1)
+        zero_index = self.flows == 0
+        self.flows[zero_index] = 1
+        self.flows = np.log(self.flows)
         print("temporary ad detector initialized")
-        
-    def get_temp_ad(self, inflow, outflow, now_time):
-        td = int((now_time - datetime(2017, 9, 1, 0)).total_seconds()//3600)
-        print("[td]: ", td)
+
+    def predict(self, now_time):
+        td = int((now_time - datetime(2017, 9, 1, 0)).total_seconds() // 3600)
+
         if td < 24:
             return None
-
-        y_real = np.concatenate([inflow, outflow], axis=1)
-        pred = []
         x = np.array([])
         for k in range(0, 1024):
             inputs = []
@@ -87,6 +86,53 @@ class Temp():
                 x = np.array([inputs])
             else:
                 x = np.concatenate([x, [inputs]], axis=0)
+
+        y = np.zeros(shape=(1024, 2, 2))
+        model = torch.load("model/ad.01_b128_lambda_10.pkl", map_location=torch.device('cpu'))
+        model.eval()
+
+        x = torch.from_numpy(x).float()
+        y = torch.from_numpy(y).float()
+
+        x1 = x.permute(1, 0, 2)
+        y1 = y.permute(1, 0, 2)
+
+        pred = model(x1, y1, False).detach().numpy()
+        pred = pred[0, :, :].reshape(1024, -1)
+        return np.exp(pred)
+
+    def get_temp_ad(self, inflow, outflow, now_time):
+        td = int((now_time - datetime(2017, 9, 1, 0)).total_seconds()//3600)
+
+        if td < 24:
+            return None
+
+        for i in range(0, 1024):
+            if inflow[i] == 0:
+                inflow[i] = 1
+            if outflow[i] == 0:
+                outflow[i] = 1
+
+        inflow = np.log(inflow)
+        outflow = np.log(outflow)
+
+        y_real = np.concatenate([inflow, outflow], axis=1)
+        x = np.array([])
+
+        for k in range(0, 1024):
+            inputs = []
+            for i in range(td - 24, td):
+                cur_time = now_time + timedelta(hours=i - 24)
+                cur_input = [self.flows[i, k], self.flows[i, k + 1024], cur_time.weekday(),
+                             1 if cur_time.weekday() > 5 else 0,
+                             1 if datetime(2017, 9, 30) < cur_time < datetime(2017, 10, 9) else 0,
+                             cur_time.hour]
+                inputs.append(cur_input)
+            if x.shape[0] == 0:
+                x = np.array([inputs])
+            else:
+                x = np.concatenate([x, [inputs]], axis=0)
+
         y = np.zeros(shape=(1024, 2, 2))
 
         model = torch.load("model/ad.01_b128_lambda_10.pkl", map_location=torch.device('cpu'))
@@ -101,5 +147,10 @@ class Temp():
         pred = model(x1, y1, False).detach().numpy()
         pred = pred[0, :, :].reshape(1024, -1)
 
-        ads = abs(y_real - pred)
-        return ads
+        res = abs(pred - y_real)
+        maxs = np.max(res, axis=0)
+        mins = np.min(res, axis=0)
+        for i in range(0, res.shape[1]):
+            res[:, i] = (res[:, i]-mins[i])/maxs[i]
+
+        return res

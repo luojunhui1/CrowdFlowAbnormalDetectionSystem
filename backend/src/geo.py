@@ -198,17 +198,21 @@ class Geo():
                 svdd.fit(x)
                 res = svdd.get_distance(x) - svdd.radius
                 anomaly_score[c] = res
+            cur_ = [0 if i < 0 else i for i in anomaly_score]
+            anomaly_score = (anomaly_score-np.min(anomaly_score))/(np.max(anomaly_score)-np.min(anomaly_score))
             return anomaly_score
         elif method == 'ifroest':
             agg_class_areas = get_agg_class_areas(interval)
-            flow = np.array([inflow, outflow]).T
+            flow = np.array([inflow, outflow]).T[0]
 
             clf = IsolationForest(contamination=0.02, max_features=2)
             for c in agg_class_areas:
                 x = flow[c, :]
                 clf.fit(x)
                 res = clf.score_samples(x)
-                anomaly_score[c] = res
+                anomaly_score[c] = res.reshape(res.shape[0], 1)
+            anomaly_score = (anomaly_score-np.min(anomaly_score))/(np.max(anomaly_score)-np.min(anomaly_score))
+            anomaly_score = 1 - anomaly_score
             return anomaly_score
 
         return None
