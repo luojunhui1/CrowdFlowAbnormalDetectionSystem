@@ -1,0 +1,4 @@
+backend/model/*
+backend/.idea/*
+frontend/dist/*
+frontend/node_modules/*
