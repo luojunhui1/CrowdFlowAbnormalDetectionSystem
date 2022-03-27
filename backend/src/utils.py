@@ -269,3 +269,8 @@ def get_spatiol_distr_param(data, interval, class_area, k=20):
             means[i][j] = (np.mean(spatiol[i][j]))
             stds[i][j] = (np.std(spatiol[i][j], ddof=1))
     return means, stds
+
+def add_click_js(path):
+    with open(path, 'w') as pf:
+
+        map_name =

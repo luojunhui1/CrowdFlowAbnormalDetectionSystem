@@ -65,7 +65,6 @@ class Temp():
         zero_index = self.flows == 0
         self.flows[zero_index] = 1
         self.flows = np.log(self.flows)
-        print("temporary ad detector initialized")
 
     def predict(self, now_time):
         td = int((now_time - datetime(2017, 9, 1, 0)).total_seconds() // 3600)
