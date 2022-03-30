@@ -201,7 +201,7 @@ class Geo():
             cur_ = [0 if i < 0 else i for i in anomaly_score]
             anomaly_score = (anomaly_score-np.min(anomaly_score))/(np.max(anomaly_score)-np.min(anomaly_score))
             return anomaly_score
-        elif method == 'ifroest':
+        elif method == 'iforest':
             agg_class_areas = get_agg_class_areas(interval)
             flow = np.array([inflow, outflow]).T[0]
 

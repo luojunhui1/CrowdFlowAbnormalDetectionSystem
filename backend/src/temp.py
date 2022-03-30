@@ -71,6 +71,7 @@ class Temp():
 
         if td < 24:
             return None
+
         x = np.array([])
         for k in range(0, 1024):
             inputs = []
